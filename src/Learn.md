@@ -2,6 +2,8 @@
 可执行文件，解析用例命令
 解析argp，找到属于commands中的哪一类
 
+main.c 提供exe:nvidia-container-cli
+
 cli/libnvc.[c/h] 将nvc_*等接口封装成libnvc.*的形式调用
 
 cli/info.c
@@ -15,7 +17,8 @@ list_command
 cli/configure.c
 configure_command->libnvc.init
                  ->libnvc.container_new->nvc_container_new->get_device_cgroup_version->nvcgo_get_device_cgroup_version_1_svc->GetDeviceCGroupVersion
-                                                          ->find_device_cgroup_path
+                                                          ->find_device_cgroup_path->nvcgo_find_device_cgroup_path_1_svc->GetDeviceCGroupMountPath
+                                                                                                                        ->GetDeviceCGroupRootPath
                  ->libnvc.driver_info_new
                  ->libnvc.device_info_new
                  ->new_devices
@@ -34,7 +37,24 @@ configure_command->libnvc.init
 
 -----------------------nvcgo-----------------------
 
+[v1/v2].go 代表cgroup v1和cgroup v2
 
+GetDeviceCGroupVersion：
+config解析时ctx->pid = getppid()
+通过nvc_container_config_new配置给cfg
+通过nvc_container_new利用copy_config复制给cnt->cfg
+通过查询/proc/[pid]/cgroup来返回版本，cgroup信息格式为"id:subsystem:group_path"
+若subsystem为“devices"，标记为cgroup v1，若subsystem为“"，标记为cgroup v2
+
+GetDeviceCGroupMountPath(v2)
+通过查询/proc/[pid]/mountinfo来返回挂载点
+检查倒数第三个部分（挂在类型）是否为cgroup2
+
+GetDeviceCGroupRootPath
+通过查询/proc/[pid]/cgroup中的group_path来返回
+
+AddDeviceRules
+使用ebpf程序来添加规则
 
 ------------------------nvc------------------------
 nvc.c 定义了诸如nvc_init等nvc_*等接口
