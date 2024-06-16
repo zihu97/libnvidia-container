@@ -9,7 +9,8 @@ cli/libnvc.[c/h] 将nvc_*等接口封装成libnvc.*的形式调用
 cli/info.c
 info_command->libnvc.init->nvc_init->driver_init->driver_init_1_svc->nvml_dl->nvmlInit_v2
             ->libnvc.driver_info_new->nvc_driver_info_new
-            ->libnvc.device_info_new->nvc_device_info_new
+            ->libnvc.device_info_new->nvc_device_info_new->driver_get_device_count
+                                                         ->init_nvc_device->fill_mig_device_info->driver_get_device_max_mig_device_count
 
 cli/list.c
 list_command
@@ -36,8 +37,15 @@ configure_command->libnvc.init
                  ->libnvc.ldcache_update
 
 -----------------------nvcgo-----------------------
+编译出libnvidia-container-go.so.1，提供四个go api供nvc调用
 
-[v1/v2].go 代表cgroup v1和cgroup v2
+[main].go 提供4个对外API
+
+[ebpf].go
+FindAttachedCgroupDeviceFilters借助bpf()查询有多少个ebpf程序被绑定到该cgroup
+appendDevice根据传入的设备访问控制规则（如设备类型、主设备号、次设备号和访问权限）生成相应的 BPF 指令，并将这些指令附加到程序的指令列表中
+
+[api].go
 
 GetDeviceCGroupVersion：
 config解析时ctx->pid = getppid()
@@ -46,14 +54,16 @@ config解析时ctx->pid = getppid()
 通过查询/proc/[pid]/cgroup来返回版本，cgroup信息格式为"id:subsystem:group_path"
 若subsystem为“devices"，标记为cgroup v1，若subsystem为“"，标记为cgroup v2
 
+[v1/v2].go 代表cgroup v1和cgroup v2
+
 GetDeviceCGroupMountPath(v2)
 通过查询/proc/[pid]/mountinfo来返回挂载点
 检查倒数第三个部分（挂在类型）是否为cgroup2
 
-GetDeviceCGroupRootPath
+GetDeviceCGroupRootPath(v2)
 通过查询/proc/[pid]/cgroup中的group_path来返回
 
-AddDeviceRules
+AddDeviceRules(v2)
 使用ebpf程序来添加规则
 
 ------------------------nvc------------------------
